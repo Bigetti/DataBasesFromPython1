@@ -111,80 +111,104 @@ def delete_client(conn, client_id):
 # Функция, позволяющая найти клиента по его данным: имени, фамилии, email или телефону.
 def find_client(conn, search_string):
     with conn.cursor() as cur:
-        cur.execute("""
-        SELECT DISTINCT clients.client_id, first_name, last_name, email
-        FROM clients
-        LEFT JOIN phones ON clients.client_id = phones.client_id
-        WHERE first_name LIKE %s 
-        OR last_name LIKE %s 
-        OR email LIKE %s 
-        OR phone_number LIKE %s
-        """, ('%' + search_string + '%', '%' + search_string + '%', '%' + search_string + '%', '%' + search_string + '%'))
-        result = cur.fetchall()
+        conditions = []
+        params = []
+
+        if search_string:
+            # Разделяем строку по запятым и удаляем лишние пробелы
+            search_params = [param.strip() for param in search_string.split(",")]
+
+            for param in search_params:
+                # Для каждого параметра создаем условие и параметр
+                conditions.append("(first_name LIKE %s OR last_name LIKE %s OR email LIKE %s OR phone_number LIKE %s)")
+                param_with_percent = '%' + param + '%'
+                params.extend([param_with_percent] * 4)  # Добавляем параметры четыре раза
+
+            conditions_str = " OR ".join(conditions)
+
+            if conditions_str:
+                query = f"""
+                    SELECT DISTINCT clients.client_id, first_name, last_name, email
+                    FROM clients
+                    LEFT JOIN phones ON clients.client_id = phones.client_id
+                    WHERE {conditions_str}
+                """
+                cur.execute(query, params)
+                result = cur.fetchall()
+                
+                # Если есть результаты, удаляем дубликаты по клиенту
+                if result:
+                    result = [result[0]]  # Сохраняем только первую запись
+            else:
+                return []
+
+        else:
+            return []
+
     return result
         
        
 if __name__ == "__main__": 
 
  # Создаем соединение с базой данных
-    conn = psycopg2.connect(database="clients", user="postgres", password="Samsung000", host="localhost", port="5432")
+    with psycopg2.connect(database="clients", user="postgres", password="Samsung000", host="localhost", port="5432") as conn:
     
 
     # Создаем структуру базы данных
-    create_database_structure(conn)
+        create_database_structure(conn)
 
     # # Добавляем нового клиента
-    new_client_id = add_client(conn, 'John', 'Doe', 'johndoe@example.com')
+        new_client_id = add_client(conn, 'John', 'Doe', 'johndoe@example.com')
 
     
     # Добавляем нового клиента
-    new_client_id = add_client(conn, 'Bill', 'Duce', 'BillDuce@example.com')
+        new_client_id = add_client(conn, 'Bill', 'Duce', 'BillDuce@example.com')
 
 
-    
-    # Добавляем нового клиента
-    new_client_id = add_client(conn, 'Sam', 'Wayn', 'SamWayn@example.com')
+        
+        # Добавляем нового клиента
+        new_client_id = add_client(conn, 'Sam', 'Wayn', 'SamWayn@example.com')
 
 
-    # Добавляем номера телефонов новым клиентам
-    new_phone_number = add_phone_number_for_client(conn, 1, 89112221111)
+        # Добавляем номера телефонов новым клиентам
+        new_phone_number = add_phone_number_for_client(conn, 1, 89112221111)
 
-    new_phone_number = add_phone_number_for_client(conn, 1, 891122222222)
+        new_phone_number = add_phone_number_for_client(conn, 1, 891122222222)
 
-    new_phone_number = add_phone_number_for_client(conn, 2, 89133333333)
-    
-    new_phone_number = add_phone_number_for_client(conn, 3, 8914444444)
-
-
-    # # Меняем данные клиента
-    # change_client_data(conn, 1, 'Vasya', 'Petrov', None,)
-
-    # change_client_data(conn, 2, 'Vasya', None, 'Petrov@test.ru')
+        new_phone_number = add_phone_number_for_client(conn, 2, 89133333333)
+        
+        new_phone_number = add_phone_number_for_client(conn, 3, 8914444444)
 
 
+        # # Меняем данные клиента
+        # change_client_data(conn, 1, 'Vasya', 'Petrov', None,)
 
-    # #Удаляем данные о телефоне клиента  
-    # delete_phone_number_for_client(conn, 3)
-
-    # # delete_phone_number_for_client(conn, 2)
+        # change_client_data(conn, 2, 'Vasya', None, 'Petrov@test.ru')
 
 
 
-    # #Удаляем  клиента  
-    # delete_client (conn, 1)
+        # #Удаляем данные о телефоне клиента  
+        # delete_phone_number_for_client(conn, 3)
+
+        # # delete_phone_number_for_client(conn, 2)
 
 
 
- # ищем клиента по его данным: имени, фамилии, email или телефону.
-    
-    results = find_client (conn, 'John')
-    print("Результаты поиска:")
-    if results:
+        # #Удаляем  клиента  
+        # delete_client (conn, 1)
+
+
+
+    # ищем клиента по его данным: имени, фамилии, email или телефону.
+        
+        results = find_client (conn, 'John')
         print("Результаты поиска:")
-        for result in results:
-            print(result)
-    else:
-        print("Клиент не найден.")
+        if results:
+            print("Результаты поиска:")
+            for result in results:
+                print(result)
+        else:
+            print("Клиент не найден.")
 
 
 
@@ -192,4 +216,4 @@ if __name__ == "__main__":
 
 
     # Закрываем соединение с базой данных
-    conn.close()
+    # conn.close()
